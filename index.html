@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Todo List UI Showcase</title>
+  <meta name="description" content="A polished todo list website with modern UI, task states, progress tracking, and optional JavaScript interactions." />
+  <link rel="preconnect" href="https://api.fontshare.com" />
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@500,700,800&display=swap" rel="stylesheet">
+  <style>
+    :root, [data-theme="light"] {
+      --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+      --text-sm: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+      --text-base: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+      --text-lg: clamp(1.125rem, 1rem + 0.75vw, 1.5rem);
+      --text-xl: clamp(1.5rem, 1.2rem + 1.25vw, 2.25rem);
+      --text-2xl: clamp(2rem, 1.2rem + 2.5vw, 3.5rem);
+      --space-1: .25rem; --space-2: .5rem; --space-3: .75rem; --space-4: 1rem; --space-5: 1.25rem; --space-6: 1.5rem; --space-8: 2rem; --space-10: 2.5rem; --space-12: 3rem; --space-16: 4rem;
+      --color-bg: #f7f6f2; --color-surface: #fbfbf9; --color-surface-2: #f3f0ec; --color-border: #d4d1ca; --color-divider: #dfdbd2;
+      --color-text: #25221d; --color-text-muted: #6f6c66; --color-text-faint: #a8a39a; --color-text-inverse: #f9f8f4;
+      --color-primary: #01696f; --color-primary-hover: #0c4e54; --color-primary-soft: #dcebea;
+      --color-success: #437a22; --color-success-soft: #d7e5ce; --color-warning: #da7101; --color-warning-soft: #f4e1cb;
+      --radius-sm: .5rem; --radius-md: .9rem; --radius-lg: 1.25rem; --radius-xl: 1.8rem; --radius-full: 999px;
+      --shadow-sm: 0 1px 2px rgba(36, 31, 26, .06);
+      --shadow-md: 0 12px 28px rgba(36, 31, 26, .08);
+      --shadow-lg: 0 24px 64px rgba(36, 31, 26, .12);
+      --font-body: 'Satoshi', Inter, sans-serif;
+      --font-display: 'Cabinet Grotesk', 'Satoshi', sans-serif;
+    }
+    [data-theme="dark"] {
+      --color-bg: #151412; --color-surface: #1b1a18; --color-surface-2: #23211f; --color-border: #34322f; --color-divider: #2b2926;
+      --color-text: #e5e1da; --color-text-muted: #b1aca2; --color-text-faint: #79746c; --color-text-inverse: #131210;
+      --color-primary: #59a6b0; --color-primary-hover: #7abcc4; --color-primary-soft: #26383a;
+      --color-success: #78b05b; --color-success-soft: #2c3c27; --color-warning: #f0ab51; --color-warning-soft: #433323;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,.2);
+      --shadow-md: 0 12px 28px rgba(0,0,0,.28);
+      --shadow-lg: 0 24px 64px rgba(0,0,0,.4);
+    }
+    * , *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0; min-height: 100vh; font-family: var(--font-body); font-size: var(--text-base); line-height: 1.6;
+      color: var(--color-text); background:
+      radial-gradient(circle at top left, rgba(1,105,111,.08), transparent 28%),
+      radial-gradient(circle at bottom right, rgba(218,113,1,.08), transparent 25%),
+      var(--color-bg);
+    }
+    a { color: inherit; }
+    button, input { font: inherit; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
+    .skip-link { position: absolute; left: 1rem; top: -3rem; background: var(--color-primary); color: var(--color-text-inverse); padding: .75rem 1rem; border-radius: var(--radius-full); z-index: 10; }
+    .skip-link:focus { top: 1rem; }
+    .app-shell { width: min(1180px, calc(100% - 2rem)); margin: 0 auto; padding: var(--space-6) 0 var(--space-10); }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-6); }
+    .brand { display: inline-flex; align-items: center; gap: .85rem; text-decoration: none; }
+    .brand svg { width: 42px; height: 42px; color: var(--color-primary); }
+    .brand-name { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 700; letter-spacing: -.02em; }
+    .brand-sub { display: block; color: var(--color-text-muted); font-size: var(--text-xs); letter-spacing: .08em; text-transform: uppercase; }
+    .top-actions { display: flex; align-items: center; gap: .75rem; }
+    .theme-toggle, .ghost-btn, .filter-btn, .task-action {
+      min-width: 44px; min-height: 44px; border: 1px solid color-mix(in srgb, var(--color-text) 10%, transparent);
+      border-radius: var(--radius-full); background: color-mix(in srgb, var(--color-surface) 88%, transparent); color: var(--color-text);
+      transition: .2s ease; cursor: pointer;
+    }
+    .theme-toggle:hover, .ghost-btn:hover, .filter-btn:hover, .task-action:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+    .hero { display: grid; grid-template-columns: 1.25fr .95fr; gap: var(--space-6); align-items: stretch; }
+    .hero-card, .panel { background: color-mix(in srgb, var(--color-surface) 92%, transparent); border: 1px solid color-mix(in srgb, var(--color-text) 10%, transparent); border-radius: var(--radius-xl); box-shadow: var(--shadow-md); backdrop-filter: blur(10px); }
+    .hero-card { padding: clamp(1.5rem, 4vw, 3rem); position: relative; overflow: hidden; }
+    .eyebrow { display: inline-flex; align-items: center; gap: .5rem; padding: .5rem .9rem; border-radius: var(--radius-full); background: var(--color-primary-soft); color: var(--color-primary); font-size: var(--text-xs); letter-spacing: .08em; text-transform: uppercase; font-weight: 700; }
+    h1 { margin: 1rem 0 .75rem; font-family: var(--font-display); font-size: var(--text-2xl); line-height: .98; letter-spacing: -.04em; max-width: 10ch; }
+    .hero p { margin: 0 0 1.2rem; color: var(--color-text-muted); max-width: 56ch; }
+    .hero-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 1rem; margin-top: 1.4rem; }
+    .mini-stat { padding: 1rem; border-radius: var(--radius-lg); background: color-mix(in srgb, var(--color-bg) 60%, var(--color-surface)); border: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent); }
+    .mini-stat strong { display: block; font-size: var(--text-lg); font-family: var(--font-display); }
+    .mini-stat span { color: var(--color-text-muted); font-size: var(--text-sm); }
+    .panel { padding: 1.35rem; display: flex; flex-direction: column; gap: 1rem; }
+    .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+    .panel h2, .board h2, .features h2 { margin: 0; font-size: var(--text-lg); font-family: var(--font-display); letter-spacing: -.02em; }
+    .progress-ring { width: 78px; height: 78px; border-radius: 50%; background: conic-gradient(var(--color-primary) 0 252deg, color-mix(in srgb, var(--color-text) 8%, transparent) 252deg 360deg); display: grid; place-items: center; }
+    .progress-ring span { width: 58px; height: 58px; display: grid; place-items: center; border-radius: 50%; background: var(--color-surface); font-weight: 700; font-size: var(--text-sm); }
+    .streak, .today-focus { padding: 1rem; border-radius: var(--radius-lg); }
+    .streak { background: var(--color-warning-soft); }
+    .today-focus { background: color-mix(in srgb, var(--color-primary-soft) 75%, var(--color-surface)); }
+    .streak small, .today-focus small { color: var(--color-text-muted); display: block; margin-bottom: .35rem; }
+    .streak strong, .today-focus strong { font-size: var(--text-lg); font-family: var(--font-display); }
+    main { margin-top: var(--space-6); display: grid; grid-template-columns: 1.3fr .8fr; gap: var(--space-6); align-items: start; }
+    .board, .features { padding: 1.4rem; }
+    .board { background: color-mix(in srgb, var(--color-surface) 92%, transparent); border: 1px solid color-mix(in srgb, var(--color-text) 10%, transparent); border-radius: var(--radius-xl); box-shadow: var(--shadow-md); }
+    .composer { display: grid; grid-template-columns: 1fr auto auto; gap: .75rem; margin: 1rem 0 1.15rem; }
+    .input, .select {
+      min-height: 52px; border-radius: var(--radius-lg); border: 1px solid color-mix(in srgb, var(--color-text) 12%, transparent);
+      background: color-mix(in srgb, var(--color-bg) 55%, var(--color-surface)); color: var(--color-text); padding: 0 1rem;
+    }
+    .input:focus, .select:focus { outline: 2px solid color-mix(in srgb, var(--color-primary) 50%, transparent); outline-offset: 2px; }
+    .primary-btn {
+      min-height: 52px; padding: 0 1.15rem; border: none; border-radius: var(--radius-lg); background: var(--color-primary); color: var(--color-text-inverse);
+      font-weight: 700; cursor: pointer; transition: .2s ease;
+    }
+    .primary-btn:hover { background: var(--color-primary-hover); transform: translateY(-1px); }
+    .board-top { display: flex; justify-content: space-between; gap: 1rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; }
+    .filters { display: flex; gap: .65rem; flex-wrap: wrap; }
+    .filter-btn { padding: 0 .95rem; font-size: var(--text-sm); background: transparent; }
+    .filter-btn.active { background: var(--color-primary-soft); color: var(--color-primary); border-color: transparent; }
+    .task-list { list-style: none; display: grid; gap: .85rem; padding: 0; margin: 0; }
+    .task-item { display: grid; grid-template-columns: auto 1fr auto; gap: .9rem; align-items: start; padding: 1rem; border-radius: var(--radius-lg); background: color-mix(in srgb, var(--color-bg) 58%, var(--color-surface)); border: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent); }
+    .check-btn { width: 24px; height: 24px; margin-top: .2rem; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--color-text) 18%, transparent); background: transparent; cursor: pointer; position: relative; }
+    .task-item.completed .check-btn { background: var(--color-success); border-color: var(--color-success); }
+    .task-item.completed .check-btn::after { content: '✓'; color: white; position: absolute; inset: 0; display: grid; place-items: center; font-size: .9rem; }
+    .task-title { font-weight: 700; margin: 0 0 .2rem; }
+    .task-meta { display: flex; gap: .5rem; flex-wrap: wrap; color: var(--color-text-muted); font-size: var(--text-sm); }
+    .chip { display: inline-flex; align-items: center; gap: .35rem; padding: .35rem .7rem; border-radius: var(--radius-full); font-size: var(--text-xs); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+    .chip.high { background: var(--color-warning-soft); color: var(--color-warning); }
+    .chip.medium { background: var(--color-primary-soft); color: var(--color-primary); }
+    .chip.done { background: var(--color-success-soft); color: var(--color-success); }
+    .task-actions { display: flex; gap: .5rem; }
+    .task-action { padding: 0 .9rem; font-size: var(--text-sm); }
+    .task-item.completed .task-title { text-decoration: line-through; color: var(--color-text-muted); }
+    .features { background: color-mix(in srgb, var(--color-surface) 92%, transparent); border: 1px solid color-mix(in srgb, var(--color-text) 10%, transparent); border-radius: var(--radius-xl); box-shadow: var(--shadow-md); display: grid; gap: 1rem; position: sticky; top: 1rem; }
+    .feature-card { padding: 1rem; border-radius: var(--radius-lg); background: color-mix(in srgb, var(--color-bg) 56%, var(--color-surface)); border: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent); }
+    .feature-card h3 { margin: 0 0 .3rem; font-size: var(--text-base); }
+    .feature-card p { margin: 0; color: var(--color-text-muted); font-size: var(--text-sm); }
+    .showcase { margin-top: var(--space-6); padding: 1.4rem; border-radius: var(--radius-xl); background: color-mix(in srgb, var(--color-surface) 92%, transparent); border: 1px solid color-mix(in srgb, var(--color-text) 10%, transparent); box-shadow: var(--shadow-md); }
+    .showcase-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-top: 1rem; }
+    .showcase-card { padding: 1rem; border-radius: var(--radius-lg); background: color-mix(in srgb, var(--color-bg) 58%, var(--color-surface)); border: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent); }
+    .showcase-card strong { display: block; margin-bottom: .35rem; }
+    .showcase-card span { color: var(--color-text-muted); font-size: var(--text-sm); }
+    .footer-note { margin-top: 1rem; color: var(--color-text-muted); font-size: var(--text-sm); }
+    @media (max-width: 980px) {
+      .hero, main, .showcase-grid { grid-template-columns: 1fr; }
+      .features { position: static; }
+    }
+    @media (max-width: 720px) {
+      .app-shell { width: min(100% - 1rem, 1180px); padding-top: 1rem; }
+      .composer { grid-template-columns: 1fr; }
+      .hero-grid { grid-template-columns: 1fr; }
+      .task-item { grid-template-columns: auto 1fr; }
+      .task-actions { grid-column: 2 / -1; flex-wrap: wrap; }
+      .topbar { align-items: flex-start; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="TaskFlow home">
+        <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect x="8" y="10" width="48" height="44" rx="16" stroke="currentColor" stroke-width="4"/>
+          <path d="M20 24H44" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+          <path d="M20 34H34" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="42" cy="40" r="8" fill="currentColor"/>
+          <path d="M39 40L41 42L45.5 37.5" stroke="var(--color-text-inverse)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>
+          <span class="brand-name">TaskFlow</span>
+          <span class="brand-sub">Todo UI Concept</span>
+        </span>
+      </a>
+      <div class="top-actions">
+        <button class="ghost-btn" type="button" aria-label="Export tasks">⤓</button>
+        <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch color mode">☾</button>
+      </div>
+    </header>
+
+    <section class="hero" aria-labelledby="hero-title">
+      <article class="hero-card">
+        <span class="eyebrow">Clean UI • Productive Flow</span>
+        <h1 id="hero-title">Plan your day with a calm, focused todo workspace.</h1>
+        <p>This design includes the required add-task input, pending task list, and complete actions, then adds progress, filters, priority badges, and a polished portfolio-ready layout.</p>
+        <div class="hero-grid">
+          <div class="mini-stat"><strong>08</strong><span>Active tasks</span></div>
+          <div class="mini-stat"><strong>05</strong><span>Finished today</span></div>
+          <div class="mini-stat"><strong>92%</strong><span>Focus score</span></div>
+        </div>
+      </article>
+      <aside class="panel" aria-label="Today overview">
+        <div class="panel-head">
+          <div>
+            <h2>Today progress</h2>
+            <p style="margin:.2rem 0 0;color:var(--color-text-muted);font-size:var(--text-sm);">A compact summary block improves the visual hierarchy.</p>
+          </div>
+          <div class="progress-ring" aria-hidden="true"><span>70%</span></div>
+        </div>
+        <div class="streak"><small>Consistency streak</small><strong>12 days</strong></div>
+        <div class="today-focus"><small>Top priority</small><strong>Finish landing page concept</strong></div>
+      </aside>
+    </section>
+
+    <main id="main-content">
+      <section class="board" aria-labelledby="tasks-heading">
+        <div class="board-top">
+          <div>
+            <h2 id="tasks-heading">Pending tasks</h2>
+            <p style="margin:.25rem 0 0;color:var(--color-text-muted);font-size:var(--text-sm);">Good UI first, lightweight JavaScript for interaction.</p>
+          </div>
+          <div class="filters" role="tablist" aria-label="Task filters">
+            <button class="filter-btn active" type="button">All</button>
+            <button class="filter-btn" type="button">Pending</button>
+            <button class="filter-btn" type="button">Completed</button>
+          </div>
+        </div>
+
+        <form class="composer" id="task-form">
+          <label class="sr-only" for="task-input">Add a new task</label>
+          <input class="input" id="task-input" name="task" placeholder="Add a new task, e.g. Build responsive hero section" required />
+          <label class="sr-only" for="priority">Priority</label>
+          <select class="select" id="priority" name="priority">
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+          <button class="primary-btn" type="submit">Add task</button>
+        </form>
+
+        <ul class="task-list" id="task-list">
+          <li class="task-item">
+            <button class="check-btn" type="button" aria-label="Mark task complete"></button>
+            <div>
+              <p class="task-title">Design the hero section for the todo landing page</p>
+              <div class="task-meta">
+                <span class="chip high">High</span>
+                <span>Due today</span>
+                <span>UI / Frontend</span>
+              </div>
+            </div>
+            <div class="task-actions">
+              <button class="task-action" type="button">Edit</button>
+              <button class="task-action" type="button">Delete</button>
+            </div>
+          </li>
+          <li class="task-item">
+            <button class="check-btn" type="button" aria-label="Mark task complete"></button>
+            <div>
+              <p class="task-title">Refine mobile spacing and touch-friendly buttons</p>
+              <div class="task-meta">
+                <span class="chip medium">Medium</span>
+                <span>Responsive</span>
+                <span>UX polish</span>
+              </div>
+            </div>
+            <div class="task-actions">
+              <button class="task-action" type="button">Edit</button>
+              <button class="task-action" type="button">Delete</button>
+            </div>
+          </li>
+          <li class="task-item completed">
+            <button class="check-btn" type="button" aria-label="Mark task incomplete"></button>
+            <div>
+              <p class="task-title">Create task card component states</p>
+              <div class="task-meta">
+                <span class="chip done">Done</span>
+                <span>Cards</span>
+                <span>Completed</span>
+              </div>
+            </div>
+            <div class="task-actions">
+              <button class="task-action" type="button">Undo</button>
+              <button class="task-action" type="button">Archive</button>
+            </div>
+          </li>
+        </ul>
+      </section>
+
+      <aside class="features" aria-labelledby="features-heading">
+        <h2 id="features-heading">Suggested UI features</h2>
+        <div class="feature-card"><h3>Add task input</h3><p>Primary input with clean spacing, clear placeholder text, and an obvious CTA.</p></div>
+        <div class="feature-card"><h3>Pending and completed states</h3><p>Separate visuals using strike-through, success tone, and filter chips.</p></div>
+        <div class="feature-card"><h3>Priority badges</h3><p>Use restrained color tags to improve scanning without cluttering the layout.</p></div>
+        <div class="feature-card"><h3>Progress summary</h3><p>A compact progress ring or counters make the page feel more product-like.</p></div>
+        <div class="feature-card"><h3>Responsive interaction</h3><p>Large tap targets, mobile-first cards, and subtle hover states strengthen UI quality.</p></div>
+      </aside>
+    </main>
+
+    <section class="showcase" aria-labelledby="showcase-heading">
+      <h2 id="showcase-heading" style="font-family:var(--font-display);font-size:var(--text-lg);margin:0;">How to showcase your work</h2>
+      <div class="showcase-grid">
+        <article class="showcase-card"><strong>GitHub repositories</strong><span>Share well-documented repos with a clean README, screenshots, and deployment steps.</span></article>
+        <article class="showcase-card"><strong>Live projects</strong><span>Include deployed links for your strongest UI work, especially responsive pages or apps.</span></article>
+        <article class="showcase-card"><strong>Portfolio snapshot</strong><span>Add 2–3 standout builds with a short role, stack, and outcome summary.</span></article>
+      </div>
+      <p class="footer-note">Optional extra: redesign the landing page of a previous WebOps project using the same visual system, then link it beside this todo UI concept.</p>
+    </section>
+  </div>
+
+  <script>
+    (() => {
+      const root = document.documentElement;
+      const toggle = document.querySelector('[data-theme-toggle]');
+      let theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      root.setAttribute('data-theme', theme);
+      toggle.textContent = theme === 'dark' ? '☀' : '☾';
+      toggle.addEventListener('click', () => {
+        theme = theme === 'dark' ? 'light' : 'dark';
+        root.setAttribute('data-theme', theme);
+        toggle.textContent = theme === 'dark' ? '☀' : '☾';
+      });
+
+      const form = document.getElementById('task-form');
+      const list = document.getElementById('task-list');
+      const filters = [...document.querySelectorAll('.filter-btn')];
+
+      function bindTask(item) {
+        const check = item.querySelector('.check-btn');
+        check.addEventListener('click', () => item.classList.toggle('completed'));
+        item.querySelectorAll('.task-action').forEach(btn => {
+          btn.addEventListener('click', () => {
+            if (btn.textContent.trim().toLowerCase() === 'delete') item.remove();
+            if (btn.textContent.trim().toLowerCase() === 'undo') item.classList.remove('completed');
+          });
+        });
+      }
+
+      [...list.children].forEach(bindTask);
+
+      form.addEventListener('submit', e => {
+        e.preventDefault();
+        const input = document.getElementById('task-input');
+        const priority = document.getElementById('priority').value;
+        const text = input.value.trim();
+        if (!text) return;
+
+        const li = document.createElement('li');
+        li.className = 'task-item';
+        li.innerHTML = `
+          <button class="check-btn" type="button" aria-label="Mark task complete"></button>
+          <div>
+            <p class="task-title"></p>
+            <div class="task-meta">
+              <span class="chip ${priority}">${priority}</span>
+              <span>New task</span>
+              <span>Added just now</span>
+            </div>
+          </div>
+          <div class="task-actions">
+            <button class="task-action" type="button">Delete</button>
+          </div>`;
+        li.querySelector('.task-title').textContent = text;
+        list.prepend(li);
+        bindTask(li);
+        input.value = '';
+      });
+
+      filters.forEach(btn => btn.addEventListener('click', () => {
+        filters.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const mode = btn.textContent.trim().toLowerCase();
+        [...list.children].forEach(item => {
+          if (mode === 'all') item.style.display = '';
+          else if (mode === 'pending') item.style.display = item.classList.contains('completed') ? 'none' : '';
+          else item.style.display = item.classList.contains('completed') ? '' : 'none';
+        });
+      }));
+    })();
+  </script>
+</body>
+</html>
