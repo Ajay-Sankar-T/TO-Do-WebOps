@@ -1,150 +1,1430 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TaskFlow Ultimate</title>
-  <meta name="description" content="A refined, feature-rich to-do app with elegant UI, multiple views, progress tracking, and smooth interactions." />
-  <link rel="preconnect" href="https://api.fontshare.com" />
-  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&f[]=cabinet-grotesk@500,700,800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./assets/style.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZEST — The Greatest TODO App</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root {
+  --c1:#FF6B6B; --c2:#FFD93D; --c3:#6BCB77; --c4:#4D96FF; --c5:#C77DFF; --c6:#FF9A3C;
+  --bg:#FFF8F0; --surface:#FFFFFF; --ink:#1a1a2e; --muted:#8892a4;
+  --radius:16px; --radius-sm:10px; --radius-xs:6px;
+  --shadow:0 4px 24px rgba(0,0,0,0.08);
+  --shadow-lg:0 8px 40px rgba(0,0,0,0.14);
+  --font:'Nunito',sans-serif;
+  --font-display:'Fredoka One',cursive;
+  --font-mono:'JetBrains Mono',monospace;
+  --sidebar:260px;
+}
+
+body{font-family:var(--font);background:var(--bg);color:var(--ink);min-height:100vh;overflow-x:hidden;cursor:default}
+
+/* ── CONFETTI CANVAS ── */
+#confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:9999}
+
+/* ── LAYOUT ── */
+.app{display:flex;min-height:100vh}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  width:var(--sidebar);flex-shrink:0;background:var(--ink);
+  display:flex;flex-direction:column;padding:1.5rem 1rem;
+  position:sticky;top:0;height:100vh;overflow-y:auto;
+  gap:1.5rem;
+}
+
+.logo{
+  font-family:var(--font-display);font-size:2.4rem;
+  background:linear-gradient(135deg,var(--c2),var(--c1),var(--c5));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  text-align:center;letter-spacing:0.03em;line-height:1;
+  padding:0.5rem 0;
+}
+.logo-sub{text-align:center;font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:0.18em;text-transform:uppercase;margin-top:2px}
+
+/* Streak badge */
+.streak-banner{
+  background:linear-gradient(135deg,#FF6B6B22,#FFD93D22);
+  border:1px solid rgba(255,217,61,0.3);
+  border-radius:var(--radius-sm);
+  padding:0.75rem;text-align:center;
+}
+.streak-num{font-family:var(--font-display);font-size:2rem;color:var(--c2);line-height:1}
+.streak-label{font-size:11px;color:rgba(255,255,255,0.5);margin-top:2px;letter-spacing:0.1em}
+.streak-fire{font-size:1.4rem}
+
+/* XP Bar */
+.xp-wrap{padding:0 0.25rem}
+.xp-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.xp-level{font-family:var(--font-display);font-size:1rem;color:var(--c5)}
+.xp-pts{font-size:11px;color:rgba(255,255,255,0.4);font-family:var(--font-mono)}
+.xp-track{height:8px;background:rgba(255,255,255,0.1);border-radius:999px;overflow:hidden}
+.xp-fill{height:100%;background:linear-gradient(90deg,var(--c5),var(--c4));border-radius:999px;transition:width 0.6s cubic-bezier(.4,0,.2,1)}
+
+/* Nav */
+.nav-section-label{font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:0.18em;text-transform:uppercase;padding:0 0.5rem;margin-bottom:0.25rem}
+.nav-btn{
+  display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.75rem;
+  border-radius:var(--radius-xs);border:none;background:none;
+  color:rgba(255,255,255,0.55);font-family:var(--font);font-size:13.5px;font-weight:600;
+  cursor:pointer;width:100%;text-align:left;transition:all 0.15s;position:relative;
+}
+.nav-btn:hover{background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.9)}
+.nav-btn.active{color:#fff}
+.nav-btn.active::before{
+  content:'';position:absolute;left:0;top:20%;bottom:20%;width:3px;
+  border-radius:0 3px 3px 0;
+}
+.nav-btn[data-view="list"].active::before{background:var(--c1)}
+.nav-btn[data-view="kanban"].active::before{background:var(--c4)}
+.nav-btn[data-view="projects"].active::before{background:var(--c3)}
+.nav-btn[data-view="focus"].active::before{background:var(--c2)}
+
+.nav-icon{font-size:16px;width:20px;text-align:center}
+.nav-badge{margin-left:auto;font-size:11px;background:rgba(255,255,255,0.1);padding:1px 7px;border-radius:999px;font-family:var(--font-mono)}
+
+/* Projects list in sidebar */
+.project-item{
+  display:flex;align-items:center;gap:0.5rem;padding:0.45rem 0.75rem;
+  border-radius:var(--radius-xs);cursor:pointer;transition:all 0.15s;
+  font-size:12.5px;color:rgba(255,255,255,0.5);font-weight:600;
+}
+.project-item:hover{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.85)}
+.project-item.active{color:#fff;background:rgba(255,255,255,0.08)}
+.project-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.project-count{margin-left:auto;font-size:10px;opacity:0.5;font-family:var(--font-mono)}
+
+.add-project-btn{
+  display:flex;align-items:center;gap:0.5rem;padding:0.4rem 0.75rem;
+  font-size:12px;color:rgba(255,255,255,0.3);cursor:pointer;border:none;background:none;
+  font-family:var(--font);transition:color 0.15s;width:100%;
+}
+.add-project-btn:hover{color:rgba(255,255,255,0.7)}
+
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+
+/* ── TOPBAR ── */
+.topbar{
+  background:var(--surface);border-bottom:2px solid var(--bg);
+  padding:1rem 2rem;display:flex;align-items:center;gap:1rem;
+  position:sticky;top:0;z-index:100;flex-wrap:wrap;
+}
+.topbar-title{font-family:var(--font-display);font-size:1.8rem;color:var(--ink);flex-shrink:0}
+.topbar-emoji{margin-right:0.25rem}
+
+.search-wrap{position:relative;flex:1;max-width:300px;min-width:180px}
+.search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+.search-input{
+  width:100%;padding:0.55rem 0.9rem 0.55rem 2.2rem;
+  border:2px solid transparent;border-radius:999px;
+  background:var(--bg);font-family:var(--font);font-size:13px;color:var(--ink);
+  outline:none;transition:all 0.2s;
+}
+.search-input:focus{border-color:var(--c4);background:#fff}
+.search-input::placeholder{color:var(--muted)}
+
+.topbar-right{display:flex;align-items:center;gap:0.5rem;margin-left:auto}
+.mood-btn{
+  font-size:1.3rem;padding:0.35rem 0.6rem;border-radius:999px;
+  border:2px solid transparent;background:var(--bg);cursor:pointer;
+  transition:all 0.15s;line-height:1;
+}
+.mood-btn:hover{transform:scale(1.15)}
+.mood-btn.active{border-color:var(--c2);background:#fff}
+
+/* ── CONTENT ── */
+.content{flex:1;padding:1.5rem 2rem 3rem}
+
+/* ── ADD TASK PANEL ── */
+.add-panel{
+  background:var(--surface);border-radius:var(--radius);
+  padding:1.25rem 1.5rem;margin-bottom:1.5rem;
+  box-shadow:var(--shadow);
+  border:2px solid transparent;
+  transition:border-color 0.2s;
+}
+.add-panel:focus-within{border-color:var(--c4)}
+
+.add-main-row{display:flex;gap:0.75rem;align-items:center;margin-bottom:0.85rem}
+.task-emoji-pick{font-size:1.4rem;cursor:pointer;padding:0.2rem;border:none;background:none;transition:transform 0.15s;flex-shrink:0}
+.task-emoji-pick:hover{transform:scale(1.2) rotate(10deg)}
+
+.add-input{
+  flex:1;border:none;outline:none;font-family:var(--font);font-size:15px;
+  font-weight:600;color:var(--ink);background:transparent;
+}
+.add-input::placeholder{color:#c9cfd8;font-weight:500}
+
+.add-meta{display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap}
+.pill-select{
+  padding:0.3rem 0.75rem;border:2px solid var(--bg);border-radius:999px;
+  font-family:var(--font);font-size:12px;font-weight:700;color:var(--muted);
+  cursor:pointer;background:var(--bg);outline:none;transition:all 0.15s;
+}
+.pill-select:focus{border-color:var(--c4);color:var(--ink)}
+.date-input{
+  padding:0.3rem 0.65rem;border:2px solid var(--bg);border-radius:999px;
+  font-family:var(--font);font-size:12px;font-weight:700;color:var(--muted);
+  cursor:pointer;background:var(--bg);outline:none;transition:all 0.15s;
+}
+.date-input:focus{border-color:var(--c4)}
+
+.add-btn{
+  margin-left:auto;padding:0.5rem 1.5rem;
+  background:var(--ink);color:#fff;
+  border:none;border-radius:999px;font-family:var(--font);font-weight:800;font-size:13px;
+  cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:0.4rem;
+  white-space:nowrap;
+}
+.add-btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(26,26,46,0.25)}
+.add-btn:active{transform:translateY(0)}
+
+/* AI Suggest */
+.ai-suggest-row{display:flex;gap:0.5rem;flex-wrap:wrap;padding-top:0.5rem;border-top:1px dashed #e8ecf0;margin-top:0.5rem}
+.ai-chip{
+  padding:0.25rem 0.75rem;background:linear-gradient(135deg,#f0e6ff,#e6f0ff);
+  border:1px solid #d4b8ff;border-radius:999px;font-size:12px;font-weight:700;
+  color:#6b3fa0;cursor:pointer;transition:all 0.15s;
+}
+.ai-chip:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(107,63,160,0.2)}
+.ai-label{font-size:11px;color:var(--muted);font-weight:700;letter-spacing:0.08em;display:flex;align-items:center;gap:4px;padding:0.25rem 0}
+
+/* ── VIEW TOGGLE ── */
+.view-toggle{display:flex;gap:0.5rem;margin-bottom:1.25rem;align-items:center;flex-wrap:wrap}
+.view-tab{
+  padding:0.4rem 1rem;border-radius:999px;border:2px solid transparent;
+  font-family:var(--font);font-size:12.5px;font-weight:800;cursor:pointer;
+  background:var(--surface);color:var(--muted);transition:all 0.15s;
+}
+.view-tab:hover{color:var(--ink);border-color:#e0e4ea}
+.view-tab.active[data-tab="list"]{background:var(--c1);color:#fff;border-color:var(--c1)}
+.view-tab.active[data-tab="kanban"]{background:var(--c4);color:#fff;border-color:var(--c4)}
+.view-tab.active[data-tab="projects"]{background:var(--c3);color:#fff;border-color:var(--c3)}
+
+.sort-row{display:flex;gap:0.4rem;margin-left:auto;align-items:center}
+.sort-chip{
+  padding:0.3rem 0.65rem;border-radius:999px;border:1.5px solid #e0e4ea;
+  font-size:11px;font-weight:700;cursor:pointer;background:#fff;color:var(--muted);
+  transition:all 0.12s;font-family:var(--font);
+}
+.sort-chip:hover,.sort-chip.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+/* ── LIST VIEW ── */
+.section-label{
+  font-size:11px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;
+  color:var(--muted);margin:1.25rem 0 0.6rem;display:flex;align-items:center;gap:0.5rem;
+}
+.section-label::after{content:'';flex:1;height:1.5px;background:#f0f2f5;border-radius:999px}
+
+.task-list{display:flex;flex-direction:column;gap:0.5rem;list-style:none}
+
+.task-card{
+  background:var(--surface);border-radius:var(--radius-sm);
+  padding:0.85rem 1rem 0.85rem 1.1rem;
+  display:flex;align-items:flex-start;gap:0.85rem;
+  border:2px solid transparent;
+  transition:all 0.2s cubic-bezier(.4,0,.2,1);
+  cursor:grab;position:relative;
+  animation:cardIn 0.28s cubic-bezier(.4,0,.2,1);
+}
+.task-card:active{cursor:grabbing}
+
+@keyframes cardIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+.task-card:hover{border-color:#e8ecf5;box-shadow:var(--shadow);transform:translateY(-1px)}
+.task-card.done{opacity:0.55}
+.task-card.done .task-text{text-decoration:line-through;color:var(--muted)}
+.task-card.dragging{opacity:0.35;transform:scale(0.98)}
+.task-card.drag-over{border-color:var(--c4);box-shadow:0 0 0 3px rgba(77,150,255,0.15)}
+
+/* Priority stripe */
+.task-card::before{
+  content:'';position:absolute;left:0;top:12px;bottom:12px;
+  width:3px;border-radius:0 3px 3px 0;
+}
+.task-card[data-p="high"]::before{background:var(--c1)}
+.task-card[data-p="medium"]::before{background:var(--c2)}
+.task-card[data-p="low"]::before{background:var(--c4)}
+
+/* Check */
+.check-wrap{display:flex;align-items:center;padding-top:2px;flex-shrink:0}
+.check-btn{
+  width:22px;height:22px;border-radius:50%;
+  border:2.5px solid #dde2ea;background:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all 0.2s;flex-shrink:0;
+}
+.check-btn:hover{border-color:var(--c3);background:#e8f8ec}
+.task-card.done .check-btn{background:var(--c3);border-color:var(--c3)}
+.check-btn svg{width:11px;height:11px;color:transparent;transition:color 0.15s}
+.task-card.done .check-btn svg{color:#fff}
+
+/* Body */
+.task-body{flex:1;min-width:0}
+.task-top{display:flex;align-items:flex-start;gap:0.5rem;flex-wrap:wrap}
+.task-emoji-display{font-size:1rem;flex-shrink:0;margin-top:1px}
+.task-text{font-size:14px;font-weight:700;line-height:1.4;word-break:break-word;flex:1}
+.task-tags{display:flex;gap:0.35rem;flex-wrap:wrap;margin-top:0.45rem;align-items:center}
+
+.tag{font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px}
+.tag-work{background:#e8effe;color:#3b5bdb}
+.tag-personal{background:#fff3bf;color:#915900}
+.tag-urgent{background:#ffe3e3;color:#c92a2a}
+.tag-learning{background:#e6fcf5;color:#087f5b}
+.tag-health{background:#f3d9fa;color:#862e9c}
+.tag-default{background:#f1f3f5;color:#868e96}
+
+.p-tag{font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px}
+.p-high{background:#ffe3e3;color:#c92a2a}
+.p-medium{background:#fff3bf;color:#915900}
+.p-low{background:#e7f5ff;color:#1971c2}
+
+.task-due{font-size:11px;color:var(--muted);font-family:var(--font-mono);font-weight:600;display:flex;align-items:center;gap:3px}
+.task-due.overdue{color:var(--c1)}
+
+/* Subtasks */
+.subtask-toggle{
+  font-size:11px;font-weight:700;color:var(--c4);cursor:pointer;
+  display:flex;align-items:center;gap:3px;margin-top:0.4rem;
+  background:none;border:none;font-family:var(--font);padding:0;
+}
+.subtask-list{list-style:none;margin-top:0.5rem;display:flex;flex-direction:column;gap:0.3rem;padding-left:0.5rem}
+.subtask-item{display:flex;align-items:center;gap:0.5rem;font-size:12.5px;font-weight:600;color:#555}
+.subtask-check{width:15px;height:15px;border-radius:4px;border:2px solid #dde2ea;flex-shrink:0;cursor:pointer;accent-color:var(--c3)}
+.subtask-text{flex:1}
+.subtask-text.done-sub{text-decoration:line-through;color:var(--muted)}
+.add-subtask-row{display:flex;gap:0.4rem;margin-top:0.4rem}
+.add-subtask-input{
+  flex:1;border:1.5px solid #e8ecf0;border-radius:6px;
+  padding:0.25rem 0.5rem;font-family:var(--font);font-size:12px;outline:none;
+}
+.add-subtask-input:focus{border-color:var(--c4)}
+.add-subtask-btn{padding:0.25rem 0.6rem;background:var(--c4);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-family:var(--font);font-weight:700}
+
+/* Task actions */
+.task-actions{display:flex;gap:0.2rem;opacity:0;transition:opacity 0.15s;flex-shrink:0}
+.task-card:hover .task-actions{opacity:1}
+.icon-btn{
+  width:28px;height:28px;border-radius:6px;border:none;background:none;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  color:var(--muted);transition:all 0.15s;font-size:13px;
+}
+.icon-btn:hover{background:var(--bg);color:var(--ink)}
+.icon-btn.del:hover{background:#ffe3e3;color:var(--c1)}
+
+/* ── KANBAN ── */
+.kanban-board{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+  gap:1rem;align-items:start;
+}
+
+.kanban-col{
+  background:var(--bg);border-radius:var(--radius);
+  padding:1rem;border:2px solid transparent;transition:border-color 0.2s;
+}
+.kanban-col.drag-over-col{border-color:var(--c4)}
+.kanban-col-head{display:flex;align-items:center;gap:0.5rem;margin-bottom:0.85rem}
+.kanban-col-dot{width:10px;height:10px;border-radius:50%}
+.kanban-col-name{font-weight:800;font-size:13px;color:var(--ink)}
+.kanban-col-count{
+  margin-left:auto;font-size:11px;font-family:var(--font-mono);font-weight:600;
+  background:#fff;padding:1px 8px;border-radius:999px;color:var(--muted);
+}
+.kanban-add-btn{
+  width:100%;padding:0.5rem;border:2px dashed #dde2ea;border-radius:var(--radius-xs);
+  background:none;cursor:pointer;font-family:var(--font);font-size:12px;font-weight:700;
+  color:var(--muted);transition:all 0.15s;margin-top:0.5rem;
+}
+.kanban-add-btn:hover{border-color:var(--c4);color:var(--c4);background:#f0f5ff}
+
+/* ── PROJECTS VIEW ── */
+.projects-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem}
+.project-card{
+  background:var(--surface);border-radius:var(--radius);padding:1.25rem;
+  box-shadow:var(--shadow);cursor:pointer;transition:all 0.2s;
+  border:2px solid transparent;position:relative;overflow:hidden;
+}
+.project-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+.project-card-accent{position:absolute;top:0;left:0;right:0;height:4px}
+.project-card-icon{font-size:2rem;margin-bottom:0.6rem}
+.project-card-name{font-weight:800;font-size:15px;margin-bottom:0.25rem}
+.project-card-desc{font-size:12px;color:var(--muted);margin-bottom:0.85rem}
+.project-progress-track{height:6px;background:var(--bg);border-radius:999px;overflow:hidden;margin-bottom:0.5rem}
+.project-progress-fill{height:100%;border-radius:999px;transition:width 0.5s}
+.project-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-weight:700}
+
+.add-project-card{
+  border:2.5px dashed #dde2ea;border-radius:var(--radius);padding:1.25rem;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:0.5rem;cursor:pointer;transition:all 0.2s;color:var(--muted);
+  min-height:140px;
+}
+.add-project-card:hover{border-color:var(--c4);color:var(--c4);background:#f0f5ff}
+.add-project-card-icon{font-size:1.8rem}
+
+/* ── FOCUS / POMODORO ── */
+.focus-view{display:flex;flex-direction:column;align-items:center;gap:2rem;padding:2rem 0}
+.pomodoro-card{
+  background:var(--surface);border-radius:24px;padding:2.5rem 3rem;
+  box-shadow:var(--shadow-lg);text-align:center;max-width:420px;width:100%;
+}
+.pomodoro-mode{
+  display:flex;gap:0.5rem;justify-content:center;margin-bottom:1.5rem;
+}
+.pomo-mode-btn{
+  padding:0.35rem 1rem;border-radius:999px;border:2px solid #e0e4ea;
+  font-family:var(--font);font-size:12px;font-weight:800;cursor:pointer;background:none;color:var(--muted);transition:all 0.15s;
+}
+.pomo-mode-btn.active{background:var(--c1);border-color:var(--c1);color:#fff}
+.pomo-mode-btn.break.active{background:var(--c3);border-color:var(--c3)}
+.pomo-mode-btn.longbreak.active{background:var(--c4);border-color:var(--c4)}
+
+.timer-ring{position:relative;width:200px;height:200px;margin:0 auto 1.5rem}
+.timer-ring svg{transform:rotate(-90deg)}
+.timer-ring-track{fill:none;stroke:#f1f3f5;stroke-width:8}
+.timer-ring-fill{fill:none;stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset 0.5s linear,stroke 0.4s}
+.timer-display{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+}
+.timer-time{font-family:var(--font-display);font-size:3.2rem;color:var(--ink);line-height:1}
+.timer-phase{font-size:11px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+
+.timer-controls{display:flex;gap:0.75rem;justify-content:center;align-items:center}
+.timer-btn{
+  padding:0.65rem 1.8rem;border-radius:999px;border:none;
+  font-family:var(--font);font-weight:800;font-size:15px;cursor:pointer;transition:all 0.2s;
+}
+.timer-start{background:var(--c1);color:#fff}
+.timer-start:hover{transform:scale(1.04);box-shadow:0 6px 20px rgba(255,107,107,0.35)}
+.timer-start.running{background:var(--c2);color:var(--ink)}
+.timer-reset{background:var(--bg);color:var(--muted)}
+.timer-reset:hover{background:#e8ecf5;color:var(--ink)}
+
+.focus-task-pick{width:100%;max-width:420px}
+.focus-task-pick label{font-size:12px;font-weight:800;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;display:block;margin-bottom:0.5rem}
+.focus-task-select{
+  width:100%;padding:0.75rem 1rem;border:2px solid #e8ecf0;border-radius:var(--radius-sm);
+  font-family:var(--font);font-size:14px;font-weight:700;color:var(--ink);
+  background:var(--surface);outline:none;cursor:pointer;
+}
+.focus-task-select:focus{border-color:var(--c1)}
+
+.pomo-count{display:flex;gap:0.5rem;justify-content:center;margin-top:1rem}
+.pomo-dot{width:12px;height:12px;border-radius:50%;background:#e8ecf0;transition:background 0.3s}
+.pomo-dot.done{background:var(--c1)}
+
+.focus-stats{display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;width:100%;max-width:420px}
+.focus-stat{
+  flex:1;min-width:100px;background:var(--surface);border-radius:var(--radius-sm);
+  padding:1rem;text-align:center;box-shadow:var(--shadow);
+}
+.focus-stat-num{font-family:var(--font-display);font-size:2rem;color:var(--c1)}
+.focus-stat-label{font-size:11px;color:var(--muted);font-weight:700;letter-spacing:0.1em;text-transform:uppercase}
+
+/* ── EMPTY STATE ── */
+.empty-state{text-align:center;padding:3rem 1rem;display:none}
+.empty-state.show{display:block}
+.empty-emoji{font-size:3.5rem;display:block;margin-bottom:1rem;animation:bob 2s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.empty-title{font-family:var(--font-display);font-size:1.8rem;color:var(--muted);margin-bottom:0.35rem}
+.empty-sub{font-size:13px;color:#b0b8c4;font-weight:600}
+
+/* ── TOAST ── */
+.toast-wrap{position:fixed;bottom:1.5rem;right:1.5rem;display:flex;flex-direction:column;gap:0.5rem;z-index:99999;pointer-events:none}
+.toast{
+  padding:0.7rem 1.1rem;background:var(--ink);color:#fff;border-radius:12px;
+  font-size:13px;font-weight:700;display:flex;align-items:center;gap:0.6rem;
+  animation:toastIn 0.3s cubic-bezier(.4,0,.2,1);
+  box-shadow:0 6px 24px rgba(0,0,0,0.18);pointer-events:auto;
+}
+@keyframes toastIn{from{opacity:0;transform:translateY(10px) scale(0.95)}to{opacity:1;transform:none}}
+.toast.success{border-left:4px solid var(--c3)}
+.toast.error{border-left:4px solid var(--c1)}
+.toast.info{border-left:4px solid var(--c4)}
+.toast.xp{border-left:4px solid var(--c5)}
+
+/* ── MODAL ── */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(26,26,46,0.45);
+  display:flex;align-items:center;justify-content:center;
+  z-index:10000;padding:1rem;backdrop-filter:blur(4px);
+  animation:fadeIn 0.2s;
+}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{
+  background:#fff;border-radius:20px;padding:1.75rem;
+  width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.2);
+  animation:modalIn 0.25s cubic-bezier(.4,0,.2,1);
+}
+@keyframes modalIn{from{opacity:0;transform:scale(0.95) translateY(10px)}to{opacity:1;transform:none}}
+.modal h3{font-family:var(--font-display);font-size:1.5rem;margin-bottom:1rem}
+.modal-input{
+  width:100%;padding:0.65rem 0.85rem;border:2px solid #e8ecf0;
+  border-radius:var(--radius-sm);font-family:var(--font);font-size:14px;
+  outline:none;margin-bottom:0.75rem;transition:border-color 0.15s;
+}
+.modal-input:focus{border-color:var(--c4)}
+.modal-colors{display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem}
+.color-swatch{width:28px;height:28px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:all 0.15s}
+.color-swatch.active{border-color:var(--ink);transform:scale(1.15)}
+.modal-icons{display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem}
+.icon-swatch{font-size:1.4rem;cursor:pointer;padding:0.25rem;border-radius:6px;border:2px solid transparent;transition:all 0.12s}
+.icon-swatch:hover,.icon-swatch.active{border-color:var(--c4);background:#f0f5ff}
+.modal-btns{display:flex;gap:0.6rem;justify-content:flex-end}
+.modal-btn{padding:0.55rem 1.4rem;border-radius:999px;font-family:var(--font);font-weight:800;font-size:13px;cursor:pointer;transition:all 0.15s}
+.modal-btn-cancel{background:var(--bg);border:2px solid #e0e4ea;color:var(--muted)}
+.modal-btn-save{background:var(--ink);color:#fff;border:2px solid var(--ink)}
+.modal-btn-save:hover{background:#2d2d50}
+
+/* Emoji picker dropdown */
+.emoji-picker{
+  position:absolute;background:#fff;border-radius:12px;padding:0.75rem;
+  box-shadow:var(--shadow-lg);display:grid;grid-template-columns:repeat(6,1fr);gap:4px;
+  z-index:500;border:1px solid #e8ecf0;top:100%;left:0;margin-top:4px;
+}
+.emoji-picker span{font-size:1.3rem;cursor:pointer;padding:4px;border-radius:6px;text-align:center;transition:background 0.1s}
+.emoji-picker span:hover{background:#f0f5ff}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#dde2ea;border-radius:999px}
+
+/* Confetti */
+.confetti-piece{position:fixed;top:-20px;border-radius:3px;pointer-events:none;z-index:9998}
+</style>
 </head>
 <body>
-  <a class="skip-link" href="#main-content">Skip to content</a>
-  <div class="app-shell">
-    <header class="topbar">
-      <a class="brand" href="#dashboard" aria-label="TaskFlow Ultimate home">
-        <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <rect x="8" y="10" width="48" height="44" rx="16" stroke="currentColor" stroke-width="4"/>
-          <path d="M20 24H44" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
-          <path d="M20 34H34" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
-          <circle cx="42" cy="40" r="8" fill="currentColor"/>
-          <path d="M39 40L41 42L45.5 37.5" stroke="var(--color-text-inverse)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <span>
-          <span class="brand-name">TaskFlow</span>
-          <span class="brand-sub">Ultimate productivity board</span>
-        </span>
-      </a>
-      <div class="top-actions">
-        <button class="ghost-btn" type="button" id="clear-completed-btn">Clear done</button>
-        <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch color mode">☾</button>
-      </div>
-    </header>
+<canvas id="confetti-canvas"></canvas>
 
-    <section class="hero">
-      <article class="hero-card">
-        <span class="eyebrow">Deep focus • elegant planning</span>
-        <h1>Turn a simple to-do list into a command center for your day.</h1>
-        <p>Now split into clean HTML, CSS, and JavaScript files, this upgraded version adds search, category views, task counters, urgency states, productivity streaks, and a more premium product-style interface.</p>
-        <div class="hero-grid" id="hero-stats"></div>
-      </article>
-      <aside class="panel">
-        <div class="panel-head">
-          <div>
-            <h2>Daily progress</h2>
-            <p>Track your momentum at a glance.</p>
-          </div>
-          <div class="progress-ring" id="progress-ring" aria-hidden="true"><span id="progress-label">0%</span></div>
-        </div>
-        <div class="stack-card warning">
-          <small>Focus streak</small>
-          <strong id="streak-count">0 days</strong>
-        </div>
-        <div class="stack-card primary">
-          <small>Next big task</small>
-          <strong id="focus-task">No urgent task</strong>
-        </div>
-        <div class="quote-card">
-          <span>Today’s cue</span>
-          <p id="motivation">Small progress still counts. Ship one important thing today.</p>
-        </div>
-      </aside>
-    </section>
+<div class="app">
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="logo">ZEST</div>
+  <div class="logo-sub">✦ Make every day count ✦</div>
 
-    <main id="main-content" class="layout-grid">
-      <section class="board">
-        <div class="board-top">
-          <div>
-            <h2>Task workspace</h2>
-            <p>Build, filter, complete, and refine your day.</p>
-          </div>
-          <div class="filters" role="tablist" aria-label="Task filters">
-            <button class="filter-btn active" data-filter="all" type="button">All</button>
-            <button class="filter-btn" data-filter="pending" type="button">Pending</button>
-            <button class="filter-btn" data-filter="completed" type="button">Completed</button>
-            <button class="filter-btn" data-filter="high" type="button">High</button>
-          </div>
-        </div>
-
-        <form class="composer" id="task-form">
-          <div class="field-span-2">
-            <label for="task-input">Task title</label>
-            <input class="input" id="task-input" name="task" placeholder="Design a premium mobile layout" required />
-          </div>
-          <div>
-            <label for="category">Category</label>
-            <select class="select" id="category" name="category">
-              <option>Design</option>
-              <option>Development</option>
-              <option>Study</option>
-              <option>Personal</option>
-            </select>
-          </div>
-          <div>
-            <label for="priority">Priority</label>
-            <select class="select" id="priority" name="priority">
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="low">Low</option>
-            </select>
-          </div>
-          <div>
-            <label for="due">Due label</label>
-            <input class="input" id="due" name="due" placeholder="Today / Tomorrow / 6 PM" />
-          </div>
-          <div class="action-cell">
-            <button class="primary-btn" type="submit">Add task</button>
-          </div>
-        </form>
-
-        <div class="toolbar">
-          <label class="search-wrap" for="search-input">
-            <span>Search</span>
-            <input class="input" id="search-input" type="search" placeholder="Search tasks, categories, or priority" />
-          </label>
-          <div class="segmented" aria-label="View switcher">
-            <button class="segmented-btn active" data-view="list" type="button">List</button>
-            <button class="segmented-btn" data-view="board" type="button">Board</button>
-          </div>
-        </div>
-
-        <section class="task-views">
-          <ul class="task-list view-active" id="task-list"></ul>
-          <div class="kanban" id="kanban-board" hidden>
-            <article class="kanban-col"><h3>Pending</h3><div id="col-pending"></div></article>
-            <article class="kanban-col"><h3>High priority</h3><div id="col-high"></div></article>
-            <article class="kanban-col"><h3>Completed</h3><div id="col-completed"></div></article>
-          </div>
-        </section>
-      </section>
-
-      <aside class="sidebar">
-        <section class="panel-section">
-          <h2>Smart overview</h2>
-          <div class="overview-grid" id="overview-grid"></div>
-        </section>
-
-        <section class="panel-section">
-          <h2>Feature highlights</h2>
-          <div class="feature-card"><h3>Task intelligence</h3><p>Search, priority sorting, due labels, and category tagging for faster scanning.</p></div>
-          <div class="feature-card"><h3>Multiple views</h3><p>Switch between list view and board view without changing the core design language.</p></div>
-          <div class="feature-card"><h3>Premium presentation</h3><p>Better spacing, typography, theme support, and dashboard summaries for a standout submission.</p></div>
-        </section>
-      </aside>
-    </main>
+  <div class="streak-banner">
+    <div class="streak-fire">🔥</div>
+    <div class="streak-num" id="streakNum">0</div>
+    <div class="streak-label">DAY STREAK</div>
   </div>
 
-  <script src="./assets/app.js" defer></script>
+  <div class="xp-wrap">
+    <div class="xp-top">
+      <span class="xp-level" id="xpLevel">Lv.1 Starter</span>
+      <span class="xp-pts" id="xpPts">0 / 200 XP</span>
+    </div>
+    <div class="xp-track"><div class="xp-fill" id="xpFill" style="width:0%"></div></div>
+  </div>
+
+  <div>
+    <div class="nav-section-label">Views</div>
+    <button class="nav-btn active" data-view="list" onclick="setView('list',this)">
+      <span class="nav-icon">📋</span> List <span class="nav-badge" id="nb-list">0</span>
+    </button>
+    <button class="nav-btn" data-view="kanban" onclick="setView('kanban',this)">
+      <span class="nav-icon">🗂</span> Kanban
+    </button>
+    <button class="nav-btn" data-view="projects" onclick="setView('projects',this)">
+      <span class="nav-icon">📁</span> Projects
+    </button>
+    <button class="nav-btn" data-view="focus" onclick="setView('focus',this)">
+      <span class="nav-icon">🍅</span> Focus Timer
+    </button>
+  </div>
+
+  <div>
+    <div class="nav-section-label">Projects</div>
+    <div id="sidebarProjects"></div>
+    <button class="add-project-btn" onclick="openProjectModal()">＋ New Project</button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="topbar">
+    <div class="topbar-title"><span class="topbar-emoji" id="viewEmoji">📋</span> <span id="viewTitle">All Tasks</span></div>
+    <div class="search-wrap">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input class="search-input" id="searchInput" placeholder="Search anything…" oninput="renderAll()">
+    </div>
+    <div class="topbar-right">
+      <div style="display:flex;gap:4px" title="Mood">
+        <button class="mood-btn" data-mood="😤" onclick="setMood(this)">😤</button>
+        <button class="mood-btn" data-mood="😐" onclick="setMood(this)">😐</button>
+        <button class="mood-btn active" data-mood="😊" onclick="setMood(this)">😊</button>
+        <button class="mood-btn" data-mood="🚀" onclick="setMood(this)">🚀</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="content" id="mainContent">
+    <!-- ADD PANEL -->
+    <div class="add-panel">
+      <div class="add-main-row">
+        <div style="position:relative">
+          <button class="task-emoji-pick" id="emojiPickBtn" onclick="toggleEmojiPicker()">✏️</button>
+          <div class="emoji-picker" id="emojiPicker" style="display:none">
+            <span onclick="pickEmoji('📌')">📌</span><span onclick="pickEmoji('🎯')">🎯</span>
+            <span onclick="pickEmoji('💡')">💡</span><span onclick="pickEmoji('📚')">📚</span>
+            <span onclick="pickEmoji('💼')">💼</span><span onclick="pickEmoji('🏠')">🏠</span>
+            <span onclick="pickEmoji('🔥')">🔥</span><span onclick="pickEmoji('⭐')">⭐</span>
+            <span onclick="pickEmoji('🎨')">🎨</span><span onclick="pickEmoji('🏋️')">🏋️</span>
+            <span onclick="pickEmoji('🛒')">🛒</span><span onclick="pickEmoji('📞')">📞</span>
+            <span onclick="pickEmoji('🚀')">🚀</span><span onclick="pickEmoji('💰')">💰</span>
+            <span onclick="pickEmoji('✏️')">✏️</span><span onclick="pickEmoji('🎵')">🎵</span>
+            <span onclick="pickEmoji('🌱')">🌱</span><span onclick="pickEmoji('❤️')">❤️</span>
+          </div>
+        </div>
+        <input class="add-input" id="taskInput" placeholder="What's the plan? Type and hit Enter…" onkeydown="if(event.key==='Enter')addTask()">
+      </div>
+      <div class="add-meta">
+        <select class="pill-select" id="prioritySelect">
+          <option value="medium">⬤ Medium</option>
+          <option value="high">🔴 High</option>
+          <option value="low">🔵 Low</option>
+        </select>
+        <select class="pill-select" id="catSelect">
+          <option value="default">🏷 No Tag</option>
+          <option value="work">💼 Work</option>
+          <option value="personal">🏠 Personal</option>
+          <option value="urgent">🔥 Urgent</option>
+          <option value="learning">📚 Learning</option>
+          <option value="health">💪 Health</option>
+        </select>
+        <select class="pill-select" id="projectSelect"><option value="">📁 No Project</option></select>
+        <select class="pill-select" id="kanbanColSelect">
+          <option value="todo">📥 To Do</option>
+          <option value="inprogress">⚡ In Progress</option>
+          <option value="review">👀 Review</option>
+          <option value="done_col">✅ Done</option>
+        </select>
+        <input class="date-input" type="date" id="dueDate">
+        <button class="add-btn" onclick="addTask()">＋ Add Task</button>
+      </div>
+      <div class="ai-suggest-row" id="aiRow">
+        <span class="ai-label">✨ AI Ideas:</span>
+        <span class="ai-chip" onclick="useAiSuggestion(this)">Review emails</span>
+        <span class="ai-chip" onclick="useAiSuggestion(this)">Plan the week</span>
+        <span class="ai-chip" onclick="useAiSuggestion(this)">Drink water 💧</span>
+        <span class="ai-chip" onclick="useAiSuggestion(this)">15-min walk 🚶</span>
+        <span class="ai-chip" onclick="useAiSuggestion(this)">Read 20 pages</span>
+      </div>
+    </div>
+
+    <!-- VIEW TOGGLE -->
+    <div class="view-toggle" id="viewToggle">
+      <button class="view-tab active" data-tab="list" onclick="setSubView('list',this)">📋 List</button>
+      <button class="view-tab" data-tab="kanban" onclick="setSubView('kanban',this)">🗂 Kanban</button>
+      <button class="view-tab" data-tab="projects" onclick="setSubView('projects',this)">📁 Projects</button>
+      <div class="sort-row" id="sortRow">
+        <span style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:0.1em">SORT</span>
+        <button class="sort-chip active" onclick="setSort('created',this)">Date</button>
+        <button class="sort-chip" onclick="setSort('priority',this)">Priority</button>
+        <button class="sort-chip" onclick="setSort('alpha',this)">A–Z</button>
+        <button class="sort-chip" onclick="setSort('due',this)">Due</button>
+      </div>
+    </div>
+
+    <!-- VIEWS -->
+    <div id="listView">
+      <div class="empty-state" id="emptyList">
+        <span class="empty-emoji">🌟</span>
+        <div class="empty-title">Nothing here yet!</div>
+        <div class="empty-sub">Add your first task above and let's crush it 💪</div>
+      </div>
+      <ul class="task-list" id="taskListEl"></ul>
+    </div>
+
+    <div id="kanbanView" style="display:none">
+      <div class="kanban-board" id="kanbanBoard"></div>
+    </div>
+
+    <div id="projectsView" style="display:none">
+      <div class="projects-grid" id="projectsGrid"></div>
+    </div>
+
+    <div id="focusView" style="display:none">
+      <div class="focus-view">
+        <div class="pomodoro-card">
+          <div class="pomodoro-mode">
+            <button class="pomo-mode-btn active" data-mins="25" onclick="setPomoMode(this)">Focus</button>
+            <button class="pomo-mode-btn break" data-mins="5" onclick="setPomoMode(this)">Short Break</button>
+            <button class="pomo-mode-btn longbreak" data-mins="15" onclick="setPomoMode(this)">Long Break</button>
+          </div>
+          <div class="timer-ring">
+            <svg width="200" height="200" viewBox="0 0 200 200">
+              <circle class="timer-ring-track" cx="100" cy="100" r="88"/>
+              <circle class="timer-ring-fill" id="timerRingFill" cx="100" cy="100" r="88" stroke="var(--c1)"
+                stroke-dasharray="553" stroke-dashoffset="0"/>
+            </svg>
+            <div class="timer-display">
+              <div class="timer-time" id="timerDisplay">25:00</div>
+              <div class="timer-phase" id="timerPhase">Focus Time</div>
+            </div>
+          </div>
+          <div class="pomo-count" id="pomoDots">
+            <div class="pomo-dot"></div><div class="pomo-dot"></div>
+            <div class="pomo-dot"></div><div class="pomo-dot"></div>
+          </div>
+          <div style="margin-top:1.25rem;display:flex;gap:0.75rem;justify-content:center">
+            <button class="timer-btn timer-reset" onclick="resetTimer()">↺ Reset</button>
+            <button class="timer-btn timer-start" id="timerStartBtn" onclick="toggleTimer()">▶ Start</button>
+          </div>
+        </div>
+        <div class="focus-task-pick">
+          <label>FOCUSING ON</label>
+          <select class="focus-task-select" id="focusTaskSelect">
+            <option value="">Pick a task to focus on…</option>
+          </select>
+        </div>
+        <div class="focus-stats">
+          <div class="focus-stat">
+            <div class="focus-stat-num" id="fStatPomos">0</div>
+            <div class="focus-stat-label">Pomodoros</div>
+          </div>
+          <div class="focus-stat">
+            <div class="focus-stat-num" id="fStatMin" style="color:var(--c4)">0</div>
+            <div class="focus-stat-label">Minutes</div>
+          </div>
+          <div class="focus-stat">
+            <div class="focus-stat-num" id="fStatDone" style="color:var(--c3)">0</div>
+            <div class="focus-stat-label">Completed</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+
+<!-- TOAST WRAP -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- PROJECT MODAL -->
+<div class="modal-overlay" id="projectModal" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <h3>✨ New Project</h3>
+    <input class="modal-input" id="projName" placeholder="Project name…">
+    <input class="modal-input" id="projDesc" placeholder="Description (optional)">
+    <div class="modal-colors" id="modalColors"></div>
+    <div class="modal-icons" id="modalIcons"></div>
+    <div class="modal-btns">
+      <button class="modal-btn modal-btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="modal-btn modal-btn-save" onclick="saveProject()">Create ✦</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let tasks = JSON.parse(localStorage.getItem('zest_tasks') || '[]');
+let projects = JSON.parse(localStorage.getItem('zest_projects') || '[]');
+let xp = +localStorage.getItem('zest_xp') || 0;
+let streak = +localStorage.getItem('zest_streak') || 0;
+let lastActive = localStorage.getItem('zest_lastactive') || '';
+let pomoSessions = +localStorage.getItem('zest_pomos') || 0;
+let pomoMinutes = +localStorage.getItem('zest_pomominutes') || 0;
+
+let currentView = 'list';
+let currentSubView = 'list';
+let currentSort = 'created';
+let currentProject = null;
+let selectedEmoji = '✏️';
+let timerInterval = null;
+let timerRunning = false;
+let timerSeconds = 25 * 60;
+let timerTotal = 25 * 60;
+let pomosDone = 0;
+
+const LEVELS = [
+  {name:'Starter',xp:0},{name:'Doer',xp:200},{name:'Achiever',xp:500},
+  {name:'Hustler',xp:1000},{name:'Warrior',xp:2000},{name:'Legend',xp:4000},
+  {name:'Zest God',xp:8000}
+];
+
+const KANBAN_COLS = [
+  {id:'todo',name:'To Do',color:'#4D96FF'},
+  {id:'inprogress',name:'In Progress',color:'#FFD93D'},
+  {id:'review',name:'Review',color:'#C77DFF'},
+  {id:'done_col',name:'Done',color:'#6BCB77'},
+];
+
+const PROJECT_COLORS = ['#FF6B6B','#FFD93D','#6BCB77','#4D96FF','#C77DFF','#FF9A3C','#FF6BB5','#6BFFDE'];
+const PROJECT_ICONS = ['📁','🚀','💼','🏠','🎨','📚','💪','🎯','🌱','💡','🎵','🛒','❤️','⭐','🔥','💰'];
+
+const AI_SUGGESTIONS = {
+  work:['Draft weekly status update','Schedule 1:1 with team','Review pull requests','Update project roadmap','Send follow-up emails'],
+  personal:['Call a friend','Meal prep for the week','Tidy up workspace','Plan weekend activities','Journal for 10 minutes'],
+  health:['30-minute workout 🏋️','Drink 8 glasses of water','Sleep by 10pm','Cook a healthy meal','Meditate 5 minutes'],
+  learning:['Read 20 pages','Watch a tutorial','Practice for 30 minutes','Take online course lesson','Write a summary of learnings'],
+  default:['Review emails','Plan the week','Drink water 💧','15-min walk 🚶','Read 20 pages','Clean your desk','Call mom 📞','Backup files']
+};
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+function init() {
+  updateStreak();
+  if (projects.length === 0) seedProjects();
+  if (tasks.length === 0) seedTasks();
+  renderAll();
+  renderSidebarProjects();
+  renderProjectSelect();
+  updateXPDisplay();
+  updateFocusStats();
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#emojiPickBtn') && !e.target.closest('#emojiPicker'))
+      document.getElementById('emojiPicker').style.display = 'none';
+  });
+}
+
+function seedProjects() {
+  projects = [
+    {id:1,name:'Work',desc:'Professional tasks',color:'#4D96FF',icon:'💼',created:Date.now()},
+    {id:2,name:'Personal',desc:'Life stuff',color:'#6BCB77',icon:'🏠',created:Date.now()},
+    {id:3,name:'Side Project',desc:'Building cool things',color:'#C77DFF',icon:'🚀',created:Date.now()},
+  ];
+  saveProjects();
+}
+
+function seedTasks() {
+  tasks = [
+    {id:1,text:'Review Q2 performance report',done:false,priority:'high',cat:'work',projectId:1,kanbanCol:'inprogress',due:today(),emoji:'💼',subtasks:[{id:11,text:'Check metrics',done:true},{id:12,text:'Write summary',done:false}],created:Date.now()-5000},
+    {id:2,text:'Morning workout 🏋️',done:true,priority:'medium',cat:'health',projectId:2,kanbanCol:'done_col',due:'',emoji:'💪',subtasks:[],created:Date.now()-4000},
+    {id:3,text:'Read Atomic Habits – 3 chapters',done:false,priority:'low',cat:'learning',projectId:2,kanbanCol:'todo',due:'',emoji:'📚',subtasks:[],created:Date.now()-3000},
+    {id:4,text:'Ship landing page redesign',done:false,priority:'high',cat:'work',projectId:3,kanbanCol:'review',due:tomorrow(),emoji:'🚀',subtasks:[{id:41,text:'Mobile responsive',done:true},{id:42,text:'Animations',done:false},{id:43,text:'Copy review',done:false}],created:Date.now()-2000},
+    {id:5,text:'Call dentist for appointment',done:false,priority:'medium',cat:'personal',projectId:2,kanbanCol:'todo',due:'',emoji:'📞',subtasks:[],created:Date.now()-1000},
+  ];
+  saveTasks();
+}
+
+function today() { return new Date().toISOString().split('T')[0]; }
+function tomorrow() { const d=new Date();d.setDate(d.getDate()+1);return d.toISOString().split('T')[0]; }
+
+function updateStreak() {
+  const todayStr = today();
+  if (lastActive === todayStr) return;
+  const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
+  const yStr = yesterday.toISOString().split('T')[0];
+  if (lastActive === yStr) streak++;
+  else if (lastActive !== '') streak = 1;
+  else streak = 1;
+  lastActive = todayStr;
+  localStorage.setItem('zest_streak', streak);
+  localStorage.setItem('zest_lastactive', lastActive);
+  document.getElementById('streakNum').textContent = streak;
+}
+
+// ─── SAVE ────────────────────────────────────────────────────────────────────
+function saveTasks() { localStorage.setItem('zest_tasks', JSON.stringify(tasks)); }
+function saveProjects() { localStorage.setItem('zest_projects', JSON.stringify(projects)); }
+function saveXP() { localStorage.setItem('zest_xp', xp); }
+
+// ─── XP / GAMIFICATION ───────────────────────────────────────────────────────
+function addXP(amt, reason) {
+  xp += amt;
+  saveXP();
+  updateXPDisplay();
+  toast(`+${amt} XP — ${reason}`, 'xp');
+}
+
+function updateXPDisplay() {
+  let level = 0;
+  for (let i = LEVELS.length-1; i >= 0; i--) {
+    if (xp >= LEVELS[i].xp) { level = i; break; }
+  }
+  const nextXP = level < LEVELS.length-1 ? LEVELS[level+1].xp : LEVELS[level].xp;
+  const prevXP = LEVELS[level].xp;
+  const pct = Math.min(100, Math.round((xp-prevXP)/(nextXP-prevXP)*100)) || 0;
+  document.getElementById('xpLevel').textContent = `Lv.${level+1} ${LEVELS[level].name}`;
+  document.getElementById('xpPts').textContent = `${xp} / ${nextXP} XP`;
+  document.getElementById('xpFill').style.width = pct + '%';
+}
+
+// ─── TASKS ───────────────────────────────────────────────────────────────────
+function addTask() {
+  const input = document.getElementById('taskInput');
+  const text = input.value.trim();
+  if (!text) { input.focus(); input.style.animation='shake 0.3s'; setTimeout(()=>input.style.animation='',300); return; }
+
+  const t = {
+    id: Date.now(),
+    text,
+    done: false,
+    priority: document.getElementById('prioritySelect').value,
+    cat: document.getElementById('catSelect').value,
+    projectId: +document.getElementById('projectSelect').value || null,
+    kanbanCol: document.getElementById('kanbanColSelect').value,
+    due: document.getElementById('dueDate').value,
+    emoji: selectedEmoji,
+    subtasks: [],
+    created: Date.now()
+  };
+
+  tasks.unshift(t);
+  saveTasks();
+  input.value = '';
+  renderAll();
+  addXP(10, 'Task added!');
+  refreshAISuggestions(t.cat);
+  updateNavBadge();
+}
+
+function toggleDone(id) {
+  const t = tasks.find(t=>t.id===id);
+  if (!t) return;
+  t.done = !t.done;
+  if (t.done) { t.kanbanCol = 'done_col'; }
+  saveTasks();
+  renderAll();
+  if (t.done) {
+    addXP(25, 'Task completed! 🎉');
+    confettiBurst();
+    toast('🎉 Task crushed!', 'success');
+    document.getElementById('fStatDone').textContent = +document.getElementById('fStatDone').textContent + 1;
+  }
+  updateNavBadge();
+}
+
+function deleteTask(id) {
+  const el = document.querySelector(`[data-task-id="${id}"]`);
+  if (el) { el.style.animation='deleteOut 0.28s forwards'; setTimeout(()=>{ tasks=tasks.filter(t=>t.id!==id); saveTasks(); renderAll(); updateNavBadge(); },260); }
+  else { tasks=tasks.filter(t=>t.id!==id); saveTasks(); renderAll(); updateNavBadge(); }
+  toast('Task deleted', 'error');
+}
+
+// Subtasks
+function toggleSubtask(taskId, subId) {
+  const t = tasks.find(t=>t.id===taskId);
+  if (!t) return;
+  const s = t.subtasks.find(s=>s.id===subId);
+  if (s) { s.done = !s.done; saveTasks(); renderAll(); }
+}
+
+function addSubtask(taskId) {
+  const inp = document.getElementById('sub-input-'+taskId);
+  if (!inp || !inp.value.trim()) return;
+  const t = tasks.find(t=>t.id===taskId);
+  if (!t) return;
+  t.subtasks.push({id:Date.now(),text:inp.value.trim(),done:false});
+  saveTasks();
+  renderAll();
+  addXP(5, 'Subtask added');
+}
+
+// ─── RENDER ──────────────────────────────────────────────────────────────────
+function renderAll() {
+  renderListView();
+  renderKanbanView();
+  renderProjectsView();
+  renderSidebarProjects();
+  renderProjectSelect();
+  updateNavBadge();
+  populateFocusSelect();
+}
+
+function getFiltered() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  let list = [...tasks];
+  if (currentProject) list = list.filter(t=>t.projectId===currentProject);
+  if (q) list = list.filter(t=>t.text.toLowerCase().includes(q));
+  const pOrd = {high:0,medium:1,low:2};
+  if (currentSort === 'priority') list.sort((a,b)=>pOrd[a.priority]-pOrd[b.priority]);
+  else if (currentSort === 'alpha') list.sort((a,b)=>a.text.localeCompare(b.text));
+  else if (currentSort === 'due') list.sort((a,b)=>{if(!a.due&&!b.due)return 0;if(!a.due)return 1;if(!b.due)return-1;return a.due.localeCompare(b.due)});
+  else list.sort((a,b)=>b.created-a.created);
+  return list;
+}
+
+function renderListView() {
+  const list = getFiltered();
+  const pending = list.filter(t=>!t.done);
+  const done = list.filter(t=>t.done);
+  const ul = document.getElementById('taskListEl');
+  const empty = document.getElementById('emptyList');
+  if (!list.length) { ul.innerHTML=''; empty.classList.add('show'); return; }
+  empty.classList.remove('show');
+
+  let html = '';
+  if (pending.length) {
+    html += `<li class="section-label">✦ Pending — ${pending.length}</li>`;
+    pending.forEach(t => html += renderTaskCard(t));
+  }
+  if (done.length) {
+    html += `<li class="section-label">✅ Completed — ${done.length}</li>`;
+    done.forEach(t => html += renderTaskCard(t));
+  }
+  ul.innerHTML = html;
+
+  // Drag & Drop
+  ul.querySelectorAll('.task-card[draggable]').forEach(card => {
+    card.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', card.dataset.taskId); card.classList.add('dragging'); });
+    card.addEventListener('dragend', () => card.classList.remove('dragging'));
+    card.addEventListener('dragover', e => { e.preventDefault(); card.classList.add('drag-over'); });
+    card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+    card.addEventListener('drop', e => {
+      e.preventDefault(); card.classList.remove('drag-over');
+      const fromId = +e.dataTransfer.getData('text/plain');
+      const toId = +card.dataset.taskId;
+      if (fromId === toId) return;
+      const fromIdx = tasks.findIndex(t=>t.id===fromId);
+      const toIdx = tasks.findIndex(t=>t.id===toId);
+      const [moved] = tasks.splice(fromIdx,1);
+      tasks.splice(toIdx,0,moved);
+      saveTasks(); renderAll();
+    });
+  });
+}
+
+function renderTaskCard(t) {
+  const over = t.due && !t.done && t.due < today();
+  const subTotal = t.subtasks.length;
+  const subDone = t.subtasks.filter(s=>s.done).length;
+  const subPct = subTotal ? Math.round(subDone/subTotal*100) : 0;
+  const proj = projects.find(p=>p.id===t.projectId);
+  const dueStr = t.due ? formatDate(t.due) : '';
+
+  return `<li class="task-card ${t.done?'done':''}" data-task-id="${t.id}" data-p="${t.priority}" draggable="true">
+    <div class="check-wrap">
+      <button class="check-btn" onclick="toggleDone(${t.id})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg>
+      </button>
+    </div>
+    <div class="task-body">
+      <div class="task-top">
+        <span class="task-emoji-display">${t.emoji||'📌'}</span>
+        <span class="task-text">${esc(t.text)}</span>
+      </div>
+      <div class="task-tags">
+        ${t.cat && t.cat!=='default' ? `<span class="tag tag-${t.cat}">${catLabel(t.cat)}</span>` : ''}
+        <span class="p-tag p-${t.priority}">${t.priority}</span>
+        ${proj ? `<span class="tag" style="background:${proj.color}22;color:${proj.color}">${proj.icon} ${proj.name}</span>` : ''}
+        ${dueStr ? `<span class="task-due ${over?'overdue':''}">📅 ${over?'⚠ ':''}${dueStr}</span>` : ''}
+        ${subTotal ? `<span class="task-due">▣ ${subDone}/${subTotal}</span>` : ''}
+      </div>
+      ${subTotal ? `
+        <div style="margin-top:6px;height:3px;background:#f1f3f5;border-radius:999px;overflow:hidden">
+          <div style="width:${subPct}%;height:100%;background:var(--c3);border-radius:999px;transition:width 0.4s"></div>
+        </div>` : ''}
+      <button class="subtask-toggle" onclick="toggleSubtaskPanel(${t.id})">
+        ${subTotal ? `▾ ${subTotal} subtask${subTotal>1?'s':''}` : '＋ Add subtask'}
+      </button>
+      <div id="subtask-panel-${t.id}" style="display:none">
+        <ul class="subtask-list">
+          ${t.subtasks.map(s=>`<li class="subtask-item">
+            <input type="checkbox" class="subtask-check" ${s.done?'checked':''} onchange="toggleSubtask(${t.id},${s.id})">
+            <span class="subtask-text ${s.done?'done-sub':''}">${esc(s.text)}</span>
+          </li>`).join('')}
+        </ul>
+        <div class="add-subtask-row">
+          <input class="add-subtask-input" id="sub-input-${t.id}" placeholder="Add subtask…" onkeydown="if(event.key==='Enter')addSubtask(${t.id})">
+          <button class="add-subtask-btn" onclick="addSubtask(${t.id})">＋</button>
+        </div>
+      </div>
+    </div>
+    <div class="task-actions">
+      <button class="icon-btn del" onclick="deleteTask(${t.id})" title="Delete">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+      </button>
+    </div>
+  </li>`;
+}
+
+function toggleSubtaskPanel(id) {
+  const panel = document.getElementById('subtask-panel-'+id);
+  if (panel) panel.style.display = panel.style.display==='none' ? 'block' : 'none';
+}
+
+// ─── KANBAN ──────────────────────────────────────────────────────────────────
+function renderKanbanView() {
+  const board = document.getElementById('kanbanBoard');
+  const list = getFiltered();
+  board.innerHTML = KANBAN_COLS.map(col => {
+    const colTasks = list.filter(t=>t.kanbanCol===col.id);
+    return `<div class="kanban-col" data-col="${col.id}"
+      ondragover="event.preventDefault();this.classList.add('drag-over-col')"
+      ondragleave="this.classList.remove('drag-over-col')"
+      ondrop="dropToKanban(event,'${col.id}')">
+      <div class="kanban-col-head">
+        <div class="kanban-col-dot" style="background:${col.color}"></div>
+        <div class="kanban-col-name">${col.name}</div>
+        <div class="kanban-col-count">${colTasks.length}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:0.5rem">
+        ${colTasks.map(t => renderKanbanCard(t)).join('')}
+      </div>
+      <button class="kanban-add-btn" onclick="quickAddToCol('${col.id}')">＋ Add card</button>
+    </div>`;
+  }).join('');
+
+  board.querySelectorAll('.task-card[draggable]').forEach(card => {
+    card.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', card.dataset.taskId); card.classList.add('dragging'); });
+    card.addEventListener('dragend', () => card.classList.remove('dragging'));
+  });
+}
+
+function renderKanbanCard(t) {
+  const over = t.due && !t.done && t.due < today();
+  return `<div class="task-card ${t.done?'done':''}" data-task-id="${t.id}" data-p="${t.priority}" draggable="true" style="cursor:grab">
+    <div class="check-wrap">
+      <button class="check-btn" onclick="toggleDone(${t.id})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg>
+      </button>
+    </div>
+    <div class="task-body">
+      <div class="task-top">
+        <span class="task-emoji-display">${t.emoji||'📌'}</span>
+        <span class="task-text" style="font-size:13px">${esc(t.text)}</span>
+      </div>
+      <div class="task-tags" style="margin-top:6px">
+        <span class="p-tag p-${t.priority}">${t.priority}</span>
+        ${t.due ? `<span class="task-due ${over?'overdue':''}">📅 ${formatDate(t.due)}</span>` : ''}
+      </div>
+    </div>
+    <div class="task-actions">
+      <button class="icon-btn del" onclick="deleteTask(${t.id})">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+      </button>
+    </div>
+  </div>`;
+}
+
+function dropToKanban(event, colId) {
+  event.preventDefault();
+  event.currentTarget.classList.remove('drag-over-col');
+  const id = +event.dataTransfer.getData('text/plain');
+  const t = tasks.find(t=>t.id===id);
+  if (t) {
+    t.kanbanCol = colId;
+    if (colId === 'done_col' && !t.done) { t.done = true; addXP(25,'Moved to done! 🎉'); confettiBurst(); }
+    saveTasks(); renderAll();
+  }
+}
+
+function quickAddToCol(colId) {
+  document.getElementById('kanbanColSelect').value = colId;
+  document.getElementById('taskInput').focus();
+  document.getElementById('taskInput').placeholder = `Adding to ${KANBAN_COLS.find(c=>c.id===colId)?.name}…`;
+}
+
+// ─── PROJECTS ────────────────────────────────────────────────────────────────
+function renderProjectsView() {
+  const grid = document.getElementById('projectsGrid');
+  let html = projects.map(p => {
+    const pTasks = tasks.filter(t=>t.projectId===p.id);
+    const done = pTasks.filter(t=>t.done).length;
+    const pct = pTasks.length ? Math.round(done/pTasks.length*100) : 0;
+    return `<div class="project-card" onclick="filterByProject(${p.id})">
+      <div class="project-card-accent" style="background:${p.color}"></div>
+      <div class="project-card-icon">${p.icon}</div>
+      <div class="project-card-name">${esc(p.name)}</div>
+      <div class="project-card-desc">${esc(p.desc||'')}</div>
+      <div class="project-progress-track">
+        <div class="project-progress-fill" style="width:${pct}%;background:${p.color}"></div>
+      </div>
+      <div class="project-meta">
+        <span>${pTasks.length} tasks</span>
+        <span>${pct}% done</span>
+      </div>
+    </div>`;
+  }).join('');
+  html += `<div class="add-project-card" onclick="openProjectModal()">
+    <div class="add-project-card-icon">✦</div>
+    <div style="font-weight:800;font-size:13px">New Project</div>
+    <div style="font-size:12px">Organise your work</div>
+  </div>`;
+  grid.innerHTML = html;
+}
+
+function filterByProject(id) {
+  currentProject = currentProject === id ? null : id;
+  renderAll();
+  setSubView('list', document.querySelector('.view-tab[data-tab="list"]'));
+}
+
+function renderSidebarProjects() {
+  const el = document.getElementById('sidebarProjects');
+  el.innerHTML = projects.map(p => {
+    const cnt = tasks.filter(t=>t.projectId===p.id&&!t.done).length;
+    return `<div class="project-item ${currentProject===p.id?'active':''}" onclick="filterByProject(${p.id})">
+      <div class="project-dot" style="background:${p.color}"></div>
+      <span>${p.icon} ${esc(p.name)}</span>
+      <span class="project-count">${cnt}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderProjectSelect() {
+  const sel = document.getElementById('projectSelect');
+  sel.innerHTML = '<option value="">📁 No Project</option>' +
+    projects.map(p=>`<option value="${p.id}">${p.icon} ${esc(p.name)}</option>`).join('');
+}
+
+// Project Modal
+function openProjectModal() {
+  document.getElementById('projectModal').style.display='flex';
+  document.getElementById('projName').value='';
+  document.getElementById('projDesc').value='';
+  const colors = document.getElementById('modalColors');
+  colors.innerHTML = PROJECT_COLORS.map((c,i)=>`<div class="color-swatch ${i===0?'active':''}" style="background:${c}" data-color="${c}" onclick="selectColor(this)"></div>`).join('');
+  const icons = document.getElementById('modalIcons');
+  icons.innerHTML = PROJECT_ICONS.map((ic,i)=>`<span class="icon-swatch ${i===0?'active':''}" data-icon="${ic}" onclick="selectIcon(this)">${ic}</span>`).join('');
+}
+
+function closeModal() { document.getElementById('projectModal').style.display='none'; }
+
+function selectColor(el) { document.querySelectorAll('.color-swatch').forEach(c=>c.classList.remove('active')); el.classList.add('active'); }
+function selectIcon(el) { document.querySelectorAll('.icon-swatch').forEach(c=>c.classList.remove('active')); el.classList.add('active'); }
+
+function saveProject() {
+  const name = document.getElementById('projName').value.trim();
+  if (!name) { document.getElementById('projName').focus(); return; }
+  const color = document.querySelector('.color-swatch.active')?.dataset.color || PROJECT_COLORS[0];
+  const icon = document.querySelector('.icon-swatch.active')?.dataset.icon || '📁';
+  const desc = document.getElementById('projDesc').value.trim();
+  projects.push({id:Date.now(),name,desc,color,icon,created:Date.now()});
+  saveProjects();
+  closeModal();
+  renderAll();
+  toast(`📁 "${name}" created!`, 'success');
+  addXP(15,'New project created!');
+}
+
+// ─── FOCUS / POMODORO ────────────────────────────────────────────────────────
+function setPomoMode(btn) {
+  document.querySelectorAll('.pomo-mode-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const mins = +btn.dataset.mins;
+  timerTotal = mins * 60;
+  timerSeconds = timerTotal;
+  timerRunning = false;
+  clearInterval(timerInterval);
+  document.getElementById('timerStartBtn').textContent = '▶ Start';
+  document.getElementById('timerStartBtn').classList.remove('running');
+  document.getElementById('timerPhase').textContent = btn.textContent + ' Time';
+  const colors = {25:'var(--c1)',5:'var(--c3)',15:'var(--c4)'};
+  document.getElementById('timerRingFill').style.stroke = colors[mins] || 'var(--c1)';
+  updateTimerDisplay();
+}
+
+function toggleTimer() {
+  if (timerRunning) {
+    clearInterval(timerInterval); timerRunning = false;
+    document.getElementById('timerStartBtn').textContent = '▶ Resume';
+    document.getElementById('timerStartBtn').classList.remove('running');
+  } else {
+    timerRunning = true;
+    document.getElementById('timerStartBtn').textContent = '⏸ Pause';
+    document.getElementById('timerStartBtn').classList.add('running');
+    timerInterval = setInterval(() => {
+      timerSeconds--;
+      updateTimerDisplay();
+      if (timerSeconds <= 0) {
+        clearInterval(timerInterval); timerRunning = false;
+        onTimerEnd();
+      }
+    }, 1000);
+  }
+}
+
+function resetTimer() {
+  clearInterval(timerInterval); timerRunning = false;
+  timerSeconds = timerTotal;
+  document.getElementById('timerStartBtn').textContent = '▶ Start';
+  document.getElementById('timerStartBtn').classList.remove('running');
+  updateTimerDisplay();
+}
+
+function updateTimerDisplay() {
+  const m = Math.floor(timerSeconds/60).toString().padStart(2,'0');
+  const s = (timerSeconds%60).toString().padStart(2,'0');
+  document.getElementById('timerDisplay').textContent = `${m}:${s}`;
+  const circ = 2 * Math.PI * 88;
+  const offset = circ * (1 - timerSeconds/timerTotal);
+  document.getElementById('timerRingFill').style.strokeDashoffset = offset;
+}
+
+function onTimerEnd() {
+  const mode = document.querySelector('.pomo-mode-btn.active');
+  const mins = +mode.dataset.mins;
+  if (mins === 25) {
+    pomosDone++;
+    pomoSessions++;
+    pomoMinutes += 25;
+    localStorage.setItem('zest_pomos', pomoSessions);
+    localStorage.setItem('zest_pomominutes', pomoMinutes);
+    if (pomosDone < 4) { const dot = document.querySelectorAll('.pomo-dot')[pomosDone-1]; if(dot) dot.classList.add('done'); }
+    if (pomosDone === 4) { pomosDone = 0; document.querySelectorAll('.pomo-dot').forEach(d=>d.classList.remove('done')); }
+    addXP(50, 'Pomodoro complete! 🍅');
+    confettiBurst();
+    toast('🍅 Focus session complete! Take a break!', 'success');
+    updateFocusStats();
+  } else {
+    toast('☕ Break over! Time to focus!', 'info');
+  }
+}
+
+function updateFocusStats() {
+  document.getElementById('fStatPomos').textContent = pomoSessions;
+  document.getElementById('fStatMin').textContent = pomoMinutes;
+}
+
+function populateFocusSelect() {
+  const sel = document.getElementById('focusTaskSelect');
+  const pending = tasks.filter(t=>!t.done);
+  sel.innerHTML = '<option value="">Pick a task to focus on…</option>' +
+    pending.map(t=>`<option value="${t.id}">${t.emoji||'📌'} ${esc(t.text)}</option>`).join('');
+}
+
+// ─── AI SUGGESTIONS ───────────────────────────────────────────────────────────
+function refreshAISuggestions(cat) {
+  const pool = AI_SUGGESTIONS[cat] || AI_SUGGESTIONS.default;
+  const picks = [...pool].sort(()=>Math.random()-0.5).slice(0,5);
+  const row = document.getElementById('aiRow');
+  const chips = picks.map(s=>`<span class="ai-chip" onclick="useAiSuggestion(this)">${s}</span>`).join('');
+  row.innerHTML = `<span class="ai-label">✨ AI Ideas:</span>${chips}`;
+}
+
+function useAiSuggestion(el) {
+  document.getElementById('taskInput').value = el.textContent;
+  document.getElementById('taskInput').focus();
+  el.style.background = 'linear-gradient(135deg,#d4f0ff,#e6d4ff)';
+}
+
+// ─── VIEWS ───────────────────────────────────────────────────────────────────
+function setView(v, btn) {
+  currentView = v;
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const map = {list:['📋','All Tasks'],kanban:['🗂','Kanban Board'],projects:['📁','Projects'],focus:['🍅','Focus Timer']};
+  document.getElementById('viewEmoji').textContent = map[v][0];
+  document.getElementById('viewTitle').textContent = map[v][1];
+  if (v === 'focus') {
+    document.getElementById('viewToggle').style.display = 'none';
+    document.getElementById('addPanel') && (document.getElementById('addPanel').style.display='none');
+    document.getElementById('listView').style.display='none';
+    document.getElementById('kanbanView').style.display='none';
+    document.getElementById('projectsView').style.display='none';
+    document.getElementById('focusView').style.display='block';
+  } else {
+    document.getElementById('viewToggle').style.display = 'flex';
+    document.getElementById('focusView').style.display='none';
+    const tab = document.querySelector(`.view-tab[data-tab="${v}"]`);
+    if (tab) setSubView(v, tab);
+    else setSubView('list', document.querySelector('.view-tab[data-tab="list"]'));
+  }
+}
+
+function setSubView(v, btn) {
+  currentSubView = v;
+  document.querySelectorAll('.view-tab').forEach(b=>b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  document.getElementById('listView').style.display = v==='list' ? 'block' : 'none';
+  document.getElementById('kanbanView').style.display = v==='kanban' ? 'block' : 'none';
+  document.getElementById('projectsView').style.display = v==='projects' ? 'block' : 'none';
+  document.getElementById('focusView').style.display = 'none';
+  document.getElementById('sortRow').style.display = v==='list' ? 'flex' : 'none';
+  renderAll();
+}
+
+function setSort(s, btn) {
+  currentSort = s;
+  document.querySelectorAll('.sort-chip').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderListView();
+}
+
+function updateNavBadge() {
+  document.getElementById('nb-list').textContent = tasks.filter(t=>!t.done).length;
+}
+
+// ─── EMOJI PICKER ────────────────────────────────────────────────────────────
+function toggleEmojiPicker() {
+  const p = document.getElementById('emojiPicker');
+  p.style.display = p.style.display==='none' ? 'grid' : 'none';
+}
+
+function pickEmoji(e) {
+  selectedEmoji = e;
+  document.getElementById('emojiPickBtn').textContent = e;
+  document.getElementById('emojiPicker').style.display = 'none';
+}
+
+// ─── MOOD ────────────────────────────────────────────────────────────────────
+function setMood(btn) {
+  document.querySelectorAll('.mood-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const moods = {'😤':'Focused & fired up! Let\'s go!','😐':'Steady pace today.','😊':'Great energy! Smashing it!','🚀':'BEAST MODE ACTIVATED!'};
+  toast(btn.dataset.mood + ' ' + moods[btn.dataset.mood], 'info');
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function catLabel(c) {
+  return {work:'💼 Work',personal:'🏠 Personal',urgent:'🔥 Urgent',learning:'📚 Learning',health:'💪 Health'}[c] || c;
+}
+
+function formatDate(d) {
+  if (!d) return '';
+  const [y,m,day] = d.split('-');
+  return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m-1] + ' ' + +day;
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+function toast(msg, type='info') {
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  const icons = {success:'✅',error:'🗑',info:'💬',xp:'⚡'};
+  el.textContent = (icons[type]||'') + ' ' + msg;
+  wrap.appendChild(el);
+  setTimeout(() => { el.style.animation='toastOut 0.3s forwards'; setTimeout(()=>el.remove(),280); }, 3000);
+}
+
+// ─── CONFETTI ────────────────────────────────────────────────────────────────
+function confettiBurst() {
+  const colors = ['#FF6B6B','#FFD93D','#6BCB77','#4D96FF','#C77DFF','#FF9A3C'];
+  const body = document.body;
+  for (let i = 0; i < 60; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti-piece';
+    const size = Math.random() * 10 + 6;
+    el.style.cssText = `
+      width:${size}px;height:${size}px;
+      background:${colors[Math.floor(Math.random()*colors.length)]};
+      left:${Math.random()*100}vw;
+      top:-20px;
+      border-radius:${Math.random()>0.5?'50%':'2px'};
+      animation:confettiFall ${Math.random()*1.5+1}s cubic-bezier(.25,.46,.45,.94) ${Math.random()*0.5}s forwards;
+    `;
+    body.appendChild(el);
+    setTimeout(() => el.remove(), 2500);
+  }
+}
+
+// Inject confetti keyframes
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes confettiFall {
+    0% { transform: translateY(0) rotate(0deg); opacity:1; }
+    100% { transform: translateY(105vh) rotate(${Math.random()*720}deg); opacity:0; }
+  }
+  @keyframes deleteOut { to { opacity:0; transform:translateX(-20px) scale(0.95); max-height:0; padding:0; margin:0; overflow:hidden; border-width:0; } }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+  @keyframes toastOut { to { opacity:0; transform:translateY(8px) scale(0.95); } }
+`;
+document.head.appendChild(style);
+
+// ─── BOOTSTRAP ───────────────────────────────────────────────────────────────
+init();
+</script>
 </body>
 </html>
